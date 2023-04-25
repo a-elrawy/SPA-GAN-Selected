@@ -122,7 +122,7 @@ def process_feature_map(feature_map):
     """
     feat_map = torch.sum(torch.abs(feature_map), dim=1, keepdim=True)
     feat_map = feat_map / torch.max(feat_map)
-    feat_map = torchvision.transforms.functional.resize(feat_map, (256, 256))
+    feat_map = torchvision.transforms.functional.resize(feat_map, (256, 256), antialias=True)
     return feat_map
 
 

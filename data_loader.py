@@ -25,7 +25,7 @@ def get_loader(dataset_name="facades", batch_size=1):
     print(f"Dataset downloaded at {dataset_path}.")
     # Image preprocessing
     transforms_ = [
-        T.Resize([286, 286], interpolation=T.InterpolationMode.NEAREST),
+        T.Resize([286, 286], interpolation=T.InterpolationMode.NEAREST, antialias=True),
         T.RandomCrop(size=[IMG_HEIGHT, IMG_WIDTH]),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
