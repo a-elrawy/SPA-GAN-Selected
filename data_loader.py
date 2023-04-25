@@ -20,8 +20,10 @@ def get_loader(dataset_name="facades", batch_size=1):
 
         batch_size (int): Batch size for training. Default: 1.
     """
-
-    dataset_path = download_dataset(dataset_name)
+    if os.path.exists(f"./datasets/{dataset_name}"):
+        dataset_path = f"./datasets/{dataset_name}"
+    else:
+        dataset_path = download_dataset(dataset_name)
     print(f"Dataset downloaded at {dataset_path}.")
     # Image preprocessing
     transforms_ = [

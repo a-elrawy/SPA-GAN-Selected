@@ -33,6 +33,8 @@ def main():
     # Train model
     trainer = Trainer(train_dataloader, generator_g, generator_f, discriminator_x, discriminator_y)
     trainer.train()
+    generated = trainer.generate(sample_map)
+    plot_example(sample_map, generated, title1='map', title2='generated')
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from torch.optim import Adam
 import torch
 
 from model import feature_matching_loss, generator_loss, cycle_consistency_loss, discriminator_loss, identity_loss
+from utils import plot_example
 
 
 class Trainer:
@@ -34,14 +35,37 @@ class Trainer:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    def load_checkpoint(self):
+        # Check Checkpoint
+        checkpoint_dir = 'checkpoints'
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+
+        # Load the pretrained generator
+        if os.path.exists(os.path.join(checkpoint_dir, 'generator_g.pth')):
+            self.generator_g.load_state_dict(load(os.path.join(checkpoint_dir, 'generator_g.pth')))
+            self.generator_f.load_state_dict(load(os.path.join(checkpoint_dir, 'generator_f.pth')))
+            self.discriminator_x.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_x.pth')))
+            self.discriminator_y.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_y.pth')))
+
+    def save_checkpoint(self):
+        checkpoint_dir = 'checkpoints'
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+
+        torch.save(self.generator_g.state_dict(), os.path.join(checkpoint_dir, 'generator_g.pth'))
+        torch.save(self.generator_f.state_dict(), os.path.join(checkpoint_dir, 'generator_f.pth'))
+        torch.save(self.discriminator_x.state_dict(), os.path.join(checkpoint_dir, 'discriminator_x.pth'))
+        torch.save(self.discriminator_y.state_dict(), os.path.join(checkpoint_dir, 'discriminator_y.pth'))
+
     def train_step(self, real_x, real_y):
         """Train the model for one step.
         Args:
             real_x: Real image from domain X
             real_y: Real image from domain Y
         """
-        real_x = real_x.to(self.device)
-        real_y = real_y.to(self.device)
+        orig_x = real_x.to(self.device)
+        orig_y = real_y.to(self.device)
 
         # Reset gradients
         self.generator_g_optimizer.zero_grad()
@@ -52,20 +76,23 @@ class Trainer:
         # Generate samples
 
         # Get feature map
-        pred_real_x, feature_map_x = self.discriminator_x(real_x, return_feature_map=True)
-        pred_real_y, feature_map_y = self.discriminator_y(real_y, return_feature_map=True)
+        pred_real_x, feature_map_x = self.discriminator_x(orig_x, return_feature_map=True)
+        pred_real_y, feature_map_y = self.discriminator_y(orig_y, return_feature_map=True)
 
         # Apply feature map to real image
-        real_x = real_x * feature_map_x
-        real_y = real_y * feature_map_y
+        real_x = orig_x * feature_map_x
+        real_y = orig_y * feature_map_y
 
         # Generate fake images
         fake_y, feat_x = self.generator_g(real_x, return_feat=True)
         rec_x, feat_y_hat = self.generator_f(fake_y, return_feat=True)
 
+        plot_example(orig_y, fake_y, title1='real_y', title2='generated y')
+
         fake_x, feat_y = self.generator_f(real_y, return_feat=True)
         rec_y, feat_x_hat = self.generator_g(fake_x, return_feat=True)
 
+        plot_example(orig_x, fake_x, title1='real_x', title2='generated x')
         # Identity mapping
         same_x = self.generator_f(real_x)
         same_y = self.generator_g(real_y)
@@ -86,11 +113,11 @@ class Trainer:
         f_loss_gan = generator_loss(pred_fake_x)
 
         # Cycle loss
-        cycle_loss = cycle_consistency_loss(real_x, rec_x) + cycle_consistency_loss(real_y, rec_y)
+        cycle_loss = cycle_consistency_loss(orig_x, rec_x) + cycle_consistency_loss(orig_y, rec_y)
 
         # total loss
-        total_g_loss = g_loss_gan + cycle_loss + identity_loss(real_y, same_y) + total_feat_loss
-        total_f_loss = f_loss_gan + cycle_loss + identity_loss(real_x, same_x) + total_feat_loss
+        total_g_loss = g_loss_gan + cycle_loss + identity_loss(orig_y, same_y) + total_feat_loss
+        total_f_loss = f_loss_gan + cycle_loss + identity_loss(orig_x, same_x) + total_feat_loss
 
         discriminator_x_loss = discriminator_loss(pred_real_x, pred_fake_x)
         discriminator_y_loss = discriminator_loss(pred_real_y, pred_fake_y)
@@ -123,18 +150,7 @@ class Trainer:
         self.discriminator_x.to(self.device)
         self.discriminator_y.to(self.device)
 
-        # Check Checkpoint
-        checkpoint_dir = 'checkpoints'
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
-
-        # Load the pretrained generator
-        if os.path.exists(os.path.join(checkpoint_dir, 'generator_g.pth')):
-            self.generator_g.load_state_dict(load(os.path.join(checkpoint_dir, 'generator_g.pth')))
-            self.generator_f.load_state_dict(load(os.path.join(checkpoint_dir, 'generator_f.pth')))
-            self.discriminator_x.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_x.pth')))
-            self.discriminator_y.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_y.pth')))
-
+        self.load_checkpoint()
         # Start training
         for epoch in range(epochs):
             start = time.time()
@@ -145,10 +161,19 @@ class Trainer:
                         f'Epoch: {epoch}/{epochs}, Step: {i}/{len(self.dataloader)}, g_loss: {g_loss}, f_loss: {f_loss},'
                         f'd_x_loss: {d_x_loss}, d_y_loss: {d_y_loss}'
                     )
+                    self.save_checkpoint()
+
             print(f'Time taken for epoch {epoch + 1} is {time.time() - start} sec\n')
 
             # Save the model checkpoints
-            torch.save(self.generator_g.state_dict(), os.path.join(checkpoint_dir, 'generator_g.pth'))
-            torch.save(self.generator_f.state_dict(), os.path.join(checkpoint_dir, 'generator_f.pth'))
-            torch.save(self.discriminator_x.state_dict(), os.path.join(checkpoint_dir, 'discriminator_x.pth'))
-            torch.save(self.discriminator_y.state_dict(), os.path.join(checkpoint_dir, 'discriminator_y.pth'))
+
+    def generate(self, image, generator='g'):
+        """Generate images from the given image.
+        Args:
+            image: Image to generate from
+            generator: Type of generator to use
+        Returns:
+            Generated image
+        """
+        image = image.to(self.device)
+        return self.generator_g(image) if generator == 'g' else self.generator_f(image)

@@ -80,7 +80,7 @@ class Generator(nn.Module):
             x = decode(x)
             x = torch.cat([x, skip])
 
-        x = F.tanh(self.last(x))
+        x = torch.tanh(self.last(x))
         return (x, feature_map_l) if return_feat else x
 
 
