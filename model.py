@@ -52,18 +52,22 @@ class Generator(nn.Module):
         self.conv3 = conv(conv_dim * 2, conv_dim * 4, 4)
         self.conv4 = conv(conv_dim * 4, conv_dim * 4, 4)
         self.conv5 = conv(conv_dim * 4, conv_dim * 4, 4)
+        self.conv6 = conv(conv_dim * 4, conv_dim * 4, 4)
+        self.conv7 = conv(conv_dim * 4, conv_dim * 4, 4)
 
         # decoding blocks
         self.deconv1 = de_conv(conv_dim * 4, conv_dim * 4, 4)
-        self.deconv2 = de_conv(conv_dim * 4, conv_dim * 4, 4, apply_dropout=True)
-        self.deconv3 = de_conv(conv_dim * 4, conv_dim * 2, 4, apply_dropout=True)
-        self.deconv4 = de_conv(conv_dim * 2, conv_dim, 4, bn=False)
+        self.deconv2 = de_conv(conv_dim * 4, conv_dim * 4, 4)
+        self.deconv3 = de_conv(conv_dim * 4, conv_dim * 4, 4, apply_dropout=True)
+        self.deconv4 = de_conv(conv_dim * 4, conv_dim * 4, 4, apply_dropout=True)
+        self.deconv5 = de_conv(conv_dim * 4, conv_dim * 2, 4, apply_dropout=True)
+        self.deconv6 = de_conv(conv_dim * 2, conv_dim, 4, bn=False)
 
         self.last = nn.ConvTranspose2d(conv_dim, 3, 4, 2, 1)
 
     def forward(self, x, return_feat=False):
-        convs = [self.conv1, self.conv2, self.conv3, self.conv4, self.conv5]
-        deconvs = [self.deconv1, self.deconv2, self.deconv3, self.deconv4]
+        convs = [self.conv1, self.conv2, self.conv3, self.conv4, self.conv5, self.conv6, self.conv7]
+        deconvs = [self.deconv1, self.deconv2, self.deconv3, self.deconv4, self.deconv5, self.deconv6]
 
         skips = []
         for down in convs:

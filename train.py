@@ -6,8 +6,7 @@ from torch.optim import Adam
 import torch
 
 from model import feature_matching_loss, generator_loss, cycle_consistency_loss, discriminator_loss, identity_loss
-from utils import plot_example, compute_kid
-
+from utils import plot_example
 
 class Trainer:
     """Trainer class for SPA-GAN."""
@@ -28,10 +27,10 @@ class Trainer:
         self.discriminator_y = discriminator_y
 
         # Optimizers
-        self.generator_g_optimizer = Adam(generator_g.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.generator_f_optimizer = Adam(generator_f.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.discriminator_x_optimizer = Adam(discriminator_x.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.discriminator_y_optimizer = Adam(discriminator_y.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        self.generator_g_optimizer = Adam(generator_g.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        self.generator_f_optimizer = Adam(generator_f.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        self.discriminator_x_optimizer = Adam(discriminator_x.parameters(), lr=0.00002, betas=(0.5, 0.999))
+        self.discriminator_y_optimizer = Adam(discriminator_y.parameters(), lr=0.00002, betas=(0.5, 0.999))
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -116,9 +115,11 @@ class Trainer:
         cycle_loss = cycle_consistency_loss(real_x, rec_x) + cycle_consistency_loss(real_y, rec_y)
 
         # total loss
-        total_g_loss = g_loss_gan + cycle_loss + total_feat_loss
-        total_f_loss = f_loss_gan + cycle_loss + total_feat_loss
-        # total_f_loss = f_loss_gan + cycle_loss + identity_loss(orig_x, same_x) + total_feat_loss
+        # total_g_loss = g_loss_gan + cycle_loss + total_feat_loss
+        # total_f_loss = f_loss_gan + cycle_loss + total_feat_loss
+
+        total_g_loss = g_loss_gan + cycle_loss + identity_loss(orig_y, same_y) + total_feat_loss
+        total_f_loss = f_loss_gan + cycle_loss + identity_loss(orig_x, same_x) + total_feat_loss
 
         discriminator_x_loss = discriminator_loss(pred_real_x, pred_fake_x)
         discriminator_y_loss = discriminator_loss(pred_real_y, pred_fake_y)
@@ -163,8 +164,6 @@ class Trainer:
                         f'd_x_loss: {d_x_loss}, d_y_loss: {d_y_loss}'
                     )
                     self.save_checkpoint()
-                    print(compute_kid(image_x, self.generate(image_y, generator='f')))
-
             print(f'Time taken for epoch {epoch + 1} is {time.time() - start} sec\n')
 
             # Save the model checkpoints
