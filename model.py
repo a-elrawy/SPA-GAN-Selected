@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torchvision.transforms.functional
 
 
-def de_conv(c_in, c_out, k_size, stride=1, pad='same', bn=True, apply_dropout=False):
+def de_conv(c_in, c_out, k_size, stride=2, pad=1, bn=True, apply_dropout=False):
     """Custom deconvolutional layer with optional batch normalization and dropout.
     Args:
         c_in: Number of channels in the input image
@@ -26,7 +26,7 @@ def de_conv(c_in, c_out, k_size, stride=1, pad='same', bn=True, apply_dropout=Fa
     return nn.Sequential(*layers)
 
 
-def conv(c_in, c_out, k_size, stride=1, pad='same', bn=True):
+def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
     """Custom convolutional layer with optional batch normalization.
     Args:
         c_in: Number of channels in the input image
@@ -57,7 +57,7 @@ class Generator(nn.Module):
         self.conv5 = conv(conv_dim * 8, conv_dim * 8, 4)
         self.conv6 = conv(conv_dim * 8, conv_dim * 8, 4)
         self.conv7 = conv(conv_dim * 8, conv_dim * 8, 4)
-        self.conv8 = conv(conv_dim * 8, conv_dim * 8, 4)
+        self.conv8 = conv(conv_dim * 8, conv_dim * 8, 4, bn=False)
 
         # decoding blocks
         self.deconv1 = de_conv(conv_dim * 8, conv_dim * 8, 4, apply_dropout=True)
