@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torchvision.transforms.functional
 
 
-def de_conv(c_in, c_out, k_size, stride=2, pad=1, bn=True, apply_dropout=False):
+def de_conv(c_in, c_out, k_size, stride=1, pad='same', bn=True, apply_dropout=False):
     """Custom deconvolutional layer with optional batch normalization and dropout.
     Args:
         c_in: Number of channels in the input image
@@ -15,17 +15,18 @@ def de_conv(c_in, c_out, k_size, stride=2, pad=1, bn=True, apply_dropout=False):
         bn: If True, adds batch normalization layer. Default: True
         apply_dropout: If True, adds dropout layer. Default: False
     """
-
-    layers = [nn.ConvTranspose2d(c_in, c_out, k_size, stride, pad, bias=False)]
+    deconv_ = nn.ConvTranspose2d(c_in, c_out, k_size, stride, pad, bias=False)
+    nn.init.normal_(deconv_.weight, 0, 0.02)
+    layers = [deconv_]
     if bn:
-        layers.append(nn.BatchNorm2d(c_out))
+        layers.append(nn.InstanceNorm2d(c_out))
     if apply_dropout:
         layers.append(nn.Dropout(0.5))
 
     return nn.Sequential(*layers)
 
 
-def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
+def conv(c_in, c_out, k_size, stride=1, pad='same', bn=True):
     """Custom convolutional layer with optional batch normalization.
     Args:
         c_in: Number of channels in the input image
@@ -35,9 +36,11 @@ def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
         pad: Zero-padding added to both sides of the input. Default: 1
         bn: If True, adds batch normalization layer. Default: True
     """
-    layers = [nn.Conv2d(c_in, c_out, k_size, stride, pad, bias=False)]
+    conv_ = nn.Conv2d(c_in, c_out, k_size, stride, pad, bias=False)
+    nn.init.normal_(conv_.weight, 0, 0.02)
+    layers = [conv_]
     if bn:
-        layers.append(nn.BatchNorm2d(c_out))
+        layers.append(nn.InstanceNorm2d(c_out))
     return nn.Sequential(*layers)
 
 
@@ -50,24 +53,27 @@ class Generator(nn.Module):
 
         # residual blocks
         self.conv3 = conv(conv_dim * 2, conv_dim * 4, 4)
-        self.conv4 = conv(conv_dim * 4, conv_dim * 4, 4)
-        self.conv5 = conv(conv_dim * 4, conv_dim * 4, 4)
-        self.conv6 = conv(conv_dim * 4, conv_dim * 4, 4)
-        self.conv7 = conv(conv_dim * 4, conv_dim * 4, 4)
+        self.conv4 = conv(conv_dim * 4, conv_dim * 8, 4)
+        self.conv5 = conv(conv_dim * 8, conv_dim * 8, 4)
+        self.conv6 = conv(conv_dim * 8, conv_dim * 8, 4)
+        self.conv7 = conv(conv_dim * 8, conv_dim * 8, 4)
+        self.conv8 = conv(conv_dim * 8, conv_dim * 8, 4)
 
         # decoding blocks
-        self.deconv1 = de_conv(conv_dim * 4, conv_dim * 4, 4)
-        self.deconv2 = de_conv(conv_dim * 4, conv_dim * 4, 4)
-        self.deconv3 = de_conv(conv_dim * 4, conv_dim * 4, 4, apply_dropout=True)
-        self.deconv4 = de_conv(conv_dim * 4, conv_dim * 4, 4, apply_dropout=True)
-        self.deconv5 = de_conv(conv_dim * 4, conv_dim * 2, 4, apply_dropout=True)
-        self.deconv6 = de_conv(conv_dim * 2, conv_dim, 4, bn=False)
+        self.deconv1 = de_conv(conv_dim * 8, conv_dim * 8, 4, apply_dropout=True)
+        self.deconv2 = de_conv(conv_dim * 8, conv_dim * 8, 4, apply_dropout=True)
+        self.deconv3 = de_conv(conv_dim * 8, conv_dim * 8, 4, apply_dropout=True)
+        self.deconv4 = de_conv(conv_dim * 8, conv_dim * 8, 4)
+        self.deconv5 = de_conv(conv_dim * 8, conv_dim * 4, 4)
+        self.deconv6 = de_conv(conv_dim * 4, conv_dim * 2, 4)
+        self.deconv7 = de_conv(conv_dim * 2, conv_dim, 4)
 
         self.last = nn.ConvTranspose2d(conv_dim, 3, 4, 2, 1)
+        nn.init.normal_(self.last.weight, 0, 0.02)
 
     def forward(self, x, return_feat=False):
-        convs = [self.conv1, self.conv2, self.conv3, self.conv4, self.conv5, self.conv6, self.conv7]
-        deconvs = [self.deconv1, self.deconv2, self.deconv3, self.deconv4, self.deconv5, self.deconv6]
+        convs = [self.conv1, self.conv2, self.conv3, self.conv4, self.conv5, self.conv6, self.conv7, self.conv8]
+        deconvs = [self.deconv1, self.deconv2, self.deconv3, self.deconv4, self.deconv5, self.deconv6, self.deconv7]
 
         skips = []
         for down in convs:
@@ -97,18 +103,20 @@ class Discriminator(nn.Module):
         self.conv2 = conv(conv_dim, conv_dim * 2, 4)
         self.conv3 = conv(conv_dim * 2, conv_dim * 4, 4)
         self.zero_pad = nn.ZeroPad2d
+        self.conv4 = conv(conv_dim * 4, conv_dim * 8, 4, stride=1)
 
         # Classification layer
-        self.fc = conv(conv_dim * 4, 1, 4, 1, 1, False)
+        self.fc = conv(conv_dim * 8, 1, 4, 1, 1, False)
 
     def forward(self, x, return_feature_map=False):
-        out = F.leaky_relu(self.conv1(x), 0.05)
-        out = F.leaky_relu(self.conv2(out), 0.05)
+        for conv_ in [self.conv1, self.conv2, self.conv3]:
+            x = conv_(x)
+        self.zero_pad(x)
+        out = F.leaky_relu(self.conv4(x), 0.05)
 
         # Feature map of the second to last encoding layer
         feat_map = process_feature_map(out)
 
-        out = F.leaky_relu(self.conv3(out), 0.05)
         self.zero_pad(out)
         out = self.fc(out)
         return (out, feat_map) if return_feature_map else out
