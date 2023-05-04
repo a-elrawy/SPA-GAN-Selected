@@ -72,3 +72,20 @@ class ImageDataset(Dataset):
 
     def __len__(self):
         return max(len(self.files_A), len(self.files_B))
+
+
+def prepare_image_for_generation(image_path):
+    """Loads image from image_path and apply transformations.
+    Args:
+        image_path (str): Path to image.
+    """
+    image = Image.open(image_path)
+    transform = T.Compose(
+        [
+            T.Resize([286, 286], interpolation=T.InterpolationMode.NEAREST, antialias=True),
+            T.CenterCrop([IMG_HEIGHT, IMG_WIDTH]),
+            T.ToTensor(),
+            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
+    return transform(image).unsqueeze(0)

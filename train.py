@@ -6,7 +6,7 @@ from torch.optim import Adam
 import torch
 
 from model import feature_matching_loss, generator_loss, cycle_consistency_loss, discriminator_loss, identity_loss
-from utils import plot_example
+
 
 class Trainer:
     """Trainer class for SPA-GAN."""
@@ -26,17 +26,19 @@ class Trainer:
         self.discriminator_x = discriminator_x
         self.discriminator_y = discriminator_y
 
-        # Optimizers
-        self.generator_g_optimizer = Adam(generator_g.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.generator_f_optimizer = Adam(generator_f.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.discriminator_x_optimizer = Adam(discriminator_x.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.discriminator_y_optimizer = Adam(discriminator_y.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        self.discriminator_x_optimizer, self.generator_g_optimizer = None, None
+        self.generator_f_optimizer, self.discriminator_y_optimizer = None, None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def load_checkpoint(self):
+    def set_optimizers(self, lr=0.0002, beta1=0.5, beta2=0.999):
+        self.generator_g_optimizer = Adam(self.generator_g.parameters(), lr=lr, betas=(beta1, beta2))
+        self.generator_f_optimizer = Adam(self.generator_f.parameters(), lr=lr, betas=(beta1, beta2))
+        self.discriminator_x_optimizer = Adam(self.discriminator_x.parameters(), lr=lr, betas=(beta1, beta2))
+        self.discriminator_y_optimizer = Adam(self.discriminator_y.parameters(), lr=lr, betas=(beta1, beta2))
+
+    def load_checkpoint(self, checkpoint_dir='checkpoints'):
         # Check Checkpoint
-        checkpoint_dir = 'checkpoints'
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
@@ -47,8 +49,7 @@ class Trainer:
             self.discriminator_x.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_x.pth')))
             self.discriminator_y.load_state_dict(load(os.path.join(checkpoint_dir, 'discriminator_y.pth')))
 
-    def save_checkpoint(self):
-        checkpoint_dir = 'checkpoints'
+    def save_checkpoint(self, checkpoint_dir='checkpoints'):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
@@ -86,12 +87,9 @@ class Trainer:
         fake_y, feat_x = self.generator_g(real_x, return_feat=True)
         rec_x, feat_y_hat = self.generator_f(fake_y, return_feat=True)
 
-        plot_example(orig_y, fake_y, title1='real_y', title2='generated y')
-
         fake_x, feat_y = self.generator_f(real_y, return_feat=True)
         rec_y, feat_x_hat = self.generator_g(fake_x, return_feat=True)
 
-        plot_example(orig_x, fake_x, title1='real_x', title2='generated x')
         # Identity mapping
         same_x = self.generator_f(real_x)
         same_y = self.generator_g(real_y)
@@ -115,11 +113,9 @@ class Trainer:
         cycle_loss = cycle_consistency_loss(real_x, rec_x) + cycle_consistency_loss(real_y, rec_y)
 
         # total loss
-        # total_g_loss = g_loss_gan + cycle_loss + total_feat_loss
-        # total_f_loss = f_loss_gan + cycle_loss + total_feat_loss
 
-        total_g_loss = g_loss_gan + cycle_loss + identity_loss(orig_y, same_y)
-        total_f_loss = f_loss_gan + cycle_loss + identity_loss(orig_x, same_x)
+        total_g_loss = g_loss_gan + cycle_loss + identity_loss(orig_y, same_y) + total_feat_loss
+        total_f_loss = f_loss_gan + cycle_loss + identity_loss(orig_x, same_x) + total_feat_loss
 
         discriminator_x_loss = discriminator_loss(pred_real_x, pred_fake_x)
         discriminator_y_loss = discriminator_loss(pred_real_y, pred_fake_y)
@@ -140,10 +136,15 @@ class Trainer:
 
         return total_g_loss.item(), total_f_loss.item(), discriminator_x_loss.item(), discriminator_y_loss.item()
 
-    def train(self, epochs=10):
+    def train(self, epochs=10, checkpoint_dir='checkpoints', save_checkpoint=True,
+              load_checkpoint=False, use_wandb=False):
         """Train the model.
         Args:
             epochs: Number of epochs to train for
+            checkpoint_dir: Directory to save checkpoints
+            save_checkpoint: Whether to save checkpoints or not
+            load_checkpoint: Whether to load checkpoint or not
+            use_wandb: Whether to use wandb or not
         """
 
         # To CUDA
@@ -152,7 +153,10 @@ class Trainer:
         self.discriminator_x.to(self.device)
         self.discriminator_y.to(self.device)
 
-        self.load_checkpoint()
+        # Load checkpoint
+        if load_checkpoint:
+            self.load_checkpoint(checkpoint_dir=checkpoint_dir)
+
         # Start training
         for epoch in range(epochs):
             start = time.time()
@@ -163,10 +167,20 @@ class Trainer:
                         f'Epoch: {epoch}/{epochs}, Step: {i}/{len(self.dataloader)}, g_loss: {g_loss}, f_loss: {f_loss},'
                         f'd_x_loss: {d_x_loss}, d_y_loss: {d_y_loss}'
                     )
-                    self.save_checkpoint()
-            print(f'Time taken for epoch {epoch + 1} is {time.time() - start} sec\n')
+                    if use_wandb:
+                        import wandb
+                        wandb.init(project='spa-gan')
+                        wandb.log({
+                            'epoch': epoch,
+                            'g_loss': g_loss,
+                            'f_loss': f_loss,
+                            'd_x_loss': d_x_loss,
+                            'd_y_loss': d_y_loss
+                        })
+                    if save_checkpoint:
+                        self.save_checkpoint(checkpoint_dir=checkpoint_dir)
 
-            # Save the model checkpoints
+            print(f'Time taken for epoch {epoch + 1} is {time.time() - start} sec\n')
 
     def generate(self, image, generator='g'):
         """Generate images from the given image.

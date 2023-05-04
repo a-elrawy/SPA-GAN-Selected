@@ -12,7 +12,7 @@ def de_conv(c_in, c_out, k_size, stride=2, pad=1, bn=True, apply_dropout=False):
         k_size: Size of the convolving kernel
         stride: Stride of the convolution. Default: 2
         pad: Zero-padding added to both sides of the input. Default: 1
-        bn: If True, adds batch normalization layer. Default: True
+        bn: If True, adds layer normalization layer. Default: True
         apply_dropout: If True, adds dropout layer. Default: False
     """
     deconv_ = nn.ConvTranspose2d(c_in, c_out, k_size, stride, pad, bias=False)
@@ -34,7 +34,7 @@ def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
         k_size: Size of the convolving kernel
         stride: Stride of the convolution. Default: 2
         pad: Zero-padding added to both sides of the input. Default: 1
-        bn: If True, adds batch normalization layer. Default: True
+        bn: If True, adds layer normalization layer. Default: True
     """
     conv_ = nn.Conv2d(c_in, c_out, k_size, stride, pad, bias=False)
     nn.init.normal_(conv_.weight, 0, 0.02)
