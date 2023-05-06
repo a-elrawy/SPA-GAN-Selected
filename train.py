@@ -199,7 +199,7 @@ class Trainer:
 
     def evaluate(self, test_dataloader, dataset='facades'):
         """Evaluate the model."""
-        for i, (map, facade) in test_dataloader:
+        for i, (map, facade) in enumerate(test_dataloader):
             map = map.to(self.device)
             facade = facade.to(self.device)
 
@@ -220,10 +220,10 @@ class Trainer:
             generated_facade = self.generate(y, 'f')[7]
             to_pil_image(generated_facade).save(f"out/{dataset}/A/{i}.png")
 
-        total_fid = fid.compute_fid(f'datasets/{dataset}/test/A', f'out/{dataset}/A') + \
-                    fid.compute_fid(f'datasets/{dataset}/test/B', f'out/{dataset}/B')
-        total_kid = fid.compute_kid(f'datasets/{dataset}/test/A', f'out/{dataset}/A') + \
-                    fid.compute_kid(f'datasets/{dataset}/test/B', f'out/{dataset}/B')
+        total_fid = fid.compute_fid(f'datasets/{dataset}/testA', f'out/{dataset}/A') + \
+                    fid.compute_fid(f'datasets/{dataset}/testB', f'out/{dataset}/B')
+        total_kid = fid.compute_kid(f'datasets/{dataset}/testA', f'out/{dataset}/A') + \
+                    fid.compute_kid(f'datasets/{dataset}/testB', f'out/{dataset}/B')
 
         print("FID score: ", total_fid / 2)
         print("KID score: ", total_kid / 2)

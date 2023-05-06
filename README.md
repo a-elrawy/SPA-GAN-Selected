@@ -1,6 +1,20 @@
 # Spatial Attention GAN for Image-to-Image Translation
 
 PyTorch Implementation of [SPA-GAN](https://arxiv.org/pdf/1908.06616.pdf).
+## Deliverables
+### Paper + Presentation
+[SPA-GAN](paper.pdf), [ppt](SPA-GAN.pptx)
+### Dataset used 
+[Facades Kaggle Version](https://www.kaggle.com/datasets/balraj98/facades-dataset)
+
+[Facades](facades.zip)
+### Model
+[Resnet-based generator model](CycleGAN.ipynb)
+
+[U-net based generator model](main.py)
+### Project Documentation
+[SPA-GAN](SPA-GAN.pdf)
+
 ## Overview
 ![alt text](img/cyclegan.png)
 
@@ -70,13 +84,4 @@ To visualize the training process using the Weights and Biases platform, run the
 ```bash
 python main.py --wandb True
 ```
-
-
-## Results
-
-#### 1) Facades
-
-From Facades to Map            |  From Map to Facades
-:-------------------------:|:-------------------------:
-![alt text](img/spa-f-m.png)  |  ![alt text](img/spa-m-f.png)
 
