@@ -47,6 +47,8 @@ def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
 class Generator(nn.Module):
     def __init__(self, conv_dim=64):
         super(Generator, self).__init__()
+
+        self.leaky_relu = nn.LeakyReLU(0.2, inplace=True)
         # encoding blocks
         self.conv1 = conv(3, conv_dim, 4)
         self.conv2 = conv(conv_dim, conv_dim * 2, 4)
@@ -77,7 +79,7 @@ class Generator(nn.Module):
 
         skips = []
         for down in convs:
-            x = down(x)
+            x = self.leaky_relu(down(x))
             skips.append(x)
 
         skips = reversed(skips[:-1])
@@ -87,7 +89,7 @@ class Generator(nn.Module):
 
         # decoding and adding the residual connections
         for decode, skip in zip(deconvs, skips):
-            x = decode(x)
+            x = self.leaky_relu(decode(x))
             x = torch.cat([x, skip])
 
         x = torch.tanh(self.last(x))

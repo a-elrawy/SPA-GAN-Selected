@@ -4,8 +4,10 @@ import time
 from torch import load
 from torch.optim import Adam
 import torch
+from torchvision.transforms.functional import to_pil_image
 
-from model import feature_matching_loss, generator_loss, cycle_consistency_loss, discriminator_loss, identity_loss
+from model import feature_matching_loss, generator_loss, cycle_consistency_loss, discriminator_loss, identity_loss, \
+    process_feature_map
 
 
 class Trainer:
@@ -137,7 +139,7 @@ class Trainer:
         return total_g_loss.item(), total_f_loss.item(), discriminator_x_loss.item(), discriminator_y_loss.item()
 
     def train(self, epochs=10, checkpoint_dir='checkpoints', save_checkpoint=True,
-              load_checkpoint=False, use_wandb=False):
+              load_checkpoint=True, use_wandb=False):
         """Train the model.
         Args:
             epochs: Number of epochs to train for
@@ -192,3 +194,28 @@ class Trainer:
         """
         image = image.to(self.device)
         return self.generator_g(image) if generator == 'g' else self.generator_f(image)
+
+    def evaluate(self, test_dataloader):
+        """Evaluate the model."""
+        for i , (map, facade) in test_dataloader:
+            map = map.to(self.device)
+            facade = facade.to(self.device)
+
+            _, feat_map_y = self.discriminator_y(map, return_feature_map=True)
+            feat_map_y = process_feature_map(feat_map_y)
+            y = map * feat_map_y
+
+            _, feat_map_x = self.discriminator_x(facade, return_feature_map=True)
+            feat_map_x = process_feature_map(feat_map_x)
+            x = facade * feat_map_x
+            if os.path.exists('out'):
+                os.makedirs('out/A')
+                os.makedirs('out/B')
+
+            generated_map = self.generate(x, 'f')[7]
+            to_pil_image(generated_map).save(f"out/A/{i}.png")
+
+            generated_facade = self.generate(y, 'f')[7]
+            to_pil_image(generated_facade).save(f"out/B/{i}.png")
+
+
