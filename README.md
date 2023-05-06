@@ -13,7 +13,7 @@ PyTorch Implementation of [SPA-GAN](https://arxiv.org/pdf/1908.06616.pdf).
 
 [U-net based generator model](main.py)
 ### Project Documentation
-[SPA-GAN Documentation](SPA-GAN Documentation.docx)
+[SPA-GAN Documentation](SPA-GAN.docx)
 
 ## Overview
 ![alt text](img/cyclegan.png)
