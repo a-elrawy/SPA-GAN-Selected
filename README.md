@@ -45,6 +45,7 @@ The following options are available:
 - `--checkpoint_dir`: specify the directory where the model checkpoints will be saved (string, default='checkpoints')
 - `--load_checkpoint`: specify whether to load the model checkpoint before training (Boolean, default=True)
 - `--wandb`: specify whether to use the Weights and Biases platform for visualization and logging (Boolean, default=False)
+- `--evaluate`: specify whether to evaluate the model (Boolean, default=False)
 
 For example, to train the model on the Facades dataset for 100 epochs, run the following command:
 

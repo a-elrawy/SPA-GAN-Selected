@@ -41,6 +41,10 @@ def main(args):
     if generated is not None:
         plot_example(sample_map, generated, title1='map', title2='generated')
 
+    # Evaluate
+    if args.evaluate:
+        trainer.evaluate(test_dataloader, dataset=args.dataset)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -54,6 +58,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_checkpoint', type=bool, default=True, help='save checkpoint')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='checkpoint directory')
     parser.add_argument('--load_checkpoint', type=bool, default=True, help='load checkpoint')
+    parser.add_argument('--evaluate', type=bool, default=False, help='evaluate')
     parser.add_argument('--wandb', type=bool, default=False, help='use wandb')
     args = parser.parse_args()
 
